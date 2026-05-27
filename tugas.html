@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Task Manager — Kenzie Wistara</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #fafaf8; --sidebar: #f3f2ef; --white: #ffffff; --border: #e5e4e0;
+  --text: #1a1a18; --muted: #8a8a82; --accent: #2c2c28;
+  --green: #3b6d11; --green-bg: #eaf3de;
+  --amber: #854f0b; --amber-bg: #faeeda;
+  --red: #a32d2d; --red-bg: #fcebeb;
+  --blue: #185fa5; --blue-bg: #e6f1fb;
+  --purple: #534ab7; --purple-bg: #eeedfe;
+  --radius: 8px; --radius-lg: 12px;
+}
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; height: 100vh; display: flex; overflow: hidden; }
+
+/* SIDEBAR */
+.sidebar { width: 220px; min-width: 220px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+.sidebar-header { padding: 20px 16px 14px; border-bottom: 1px solid var(--border); }
+.workspace-name { font-family: 'DM Serif Display', serif; font-size: 16px; color: var(--text); letter-spacing: -0.3px; }
+.workspace-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.sidebar-section { padding: 8px 0; }
+.sidebar-label { font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase; padding: 6px 16px 4px; }
+.nav-item { display: flex; align-items: center; gap: 8px; padding: 7px 16px; cursor: pointer; font-size: 13px; color: var(--muted); transition: background 0.15s, color 0.15s; user-select: none; }
+.nav-item:hover { background: rgba(0,0,0,0.04); color: var(--text); }
+.nav-item.active { background: rgba(0,0,0,0.07); color: var(--text); font-weight: 500; }
+.nav-icon { font-size: 14px; width: 18px; text-align: center; }
+.sidebar-footer { margin-top: auto; padding: 14px 16px; border-top: 1px solid var(--border); }
+.user-row { display: flex; align-items: center; gap: 10px; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 500; flex-shrink: 0; }
+
+/* MAIN */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.topbar { background: var(--white); border-bottom: 1px solid var(--border); padding: 0 28px; height: 50px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.topbar-title { font-weight: 500; font-size: 15px; }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--white); color: var(--text); font-size: 12px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: background 0.15s; }
+.btn:hover { background: var(--sidebar); }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: #3a3a34; }
+.btn-danger { background: var(--red-bg); color: var(--red); border-color: #f0b4b4; }
+.btn-danger:hover { background: #f7c1c1; }
+
+/* PAGES */
+.page { display: none; flex: 1; overflow-y: auto; padding: 28px; animation: fadeInPage 0.2s ease; }
+.page.active { display: block; }
+@keyframes fadeInPage { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* SHARED COMPONENTS */
+.page-heading { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--text); margin-bottom: 4px; }
+.page-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.stat-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; }
+.stat-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.stat-value { font-size: 24px; font-weight: 500; color: var(--text); }
+.stat-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 14px; }
+.card-title { font-weight: 500; font-size: 14px; margin-bottom: 4px; }
+.card-sub { font-size: 12px; color: var(--muted); }
+.section-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 12px; }
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+.badge-blue { background: var(--blue-bg); color: var(--blue); }
+.badge-green { background: var(--green-bg); color: var(--green); }
+.badge-amber { background: var(--amber-bg); color: var(--amber); }
+.badge-red { background: var(--red-bg); color: var(--red); }
+.badge-purple { background: var(--purple-bg); color: var(--purple); }
+
+/* TASKS PAGE */
+.add-task-area { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 20px; }
+.add-task-label { font-size: 11px; font-weight: 600; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.add-task-row { display: flex; gap: 8px; }
+.task-input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text); background: var(--bg); outline: none; transition: border 0.15s, background 0.15s; }
+.task-input:focus { border-color: #aaa; background: var(--white); }
+.cat-select { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text); background: var(--bg); outline: none; cursor: pointer; }
+.filter-row { display: flex; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.filter-tab { padding: 9px 16px; font-size: 13px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s, border-color 0.15s; }
+.filter-tab:hover { color: var(--text); }
+.filter-tab.active { color: var(--text); font-weight: 500; border-bottom-color: var(--text); }
+.tasks-section { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.tasks-header { display: grid; grid-template-columns: 1fr 110px 90px 70px; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.task-item { display: grid; grid-template-columns: 1fr 110px 90px 70px; padding: 11px 16px; border-bottom: 0.5px solid var(--border); align-items: center; transition: background 0.15s; animation: slideIn 0.22s ease; }
+.task-item:last-child { border-bottom: none; }
+.task-item:hover { background: var(--bg); }
+.task-item.done { opacity: 0.5; }
+.task-item.done .task-name { text-decoration: line-through; color: var(--muted); }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+.task-left { display: flex; align-items: center; gap: 10px; }
+.checkbox { width: 16px; height: 16px; border: 1.5px solid var(--border); border-radius: 4px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: background 0.15s, border-color 0.15s; }
+.checkbox.checked { background: var(--accent); border-color: var(--accent); }
+.checkbox.checked::after { content: '✓'; color: #fff; font-size: 10px; line-height: 1; }
+.task-name { font-size: 13px; color: var(--text); }
+.cat-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.cat-work { background: var(--blue-bg); color: var(--blue); }
+.cat-personal { background: var(--green-bg); color: var(--green); }
+.cat-shopping { background: var(--amber-bg); color: var(--amber); }
+.cat-urgent { background: var(--red-bg); color: var(--red); }
+.prio-cell { display: flex; align-items: center; gap: 6px; }
+.priority-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.p-high { background: #d85a30; } .p-med { background: #ba7517; } .p-low { background: #3b6d11; }
+.prio-label { font-size: 11px; color: var(--muted); }
+.delete-btn { width: 26px; height: 26px; border-radius: 5px; border: none; background: transparent; color: var(--muted); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s, color 0.15s; margin-left: auto; }
+.delete-btn:hover { background: var(--red-bg); color: var(--red); }
+.empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
+.empty-icon { font-size: 36px; margin-bottom: 10px; }
+.empty-text { font-size: 13px; }
+
+/* PROJECTS PAGE */
+.projects-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 20px; }
+.project-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; }
+.project-card:hover { border-color: #bbb; }
+.project-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+.project-name { font-weight: 500; font-size: 14px; }
+.project-desc { font-size: 12px; color: var(--muted); margin-bottom: 14px; line-height: 1.6; }
+.progress-bar-wrap { background: var(--bg); border-radius: 99px; height: 5px; margin-bottom: 6px; overflow: hidden; }
+.progress-bar-fill { height: 100%; border-radius: 99px; background: var(--accent); transition: width 0.4s ease; }
+.progress-label { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; }
+
+/* CALENDAR PAGE */
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; }
+.cal-header-cell { background: var(--sidebar); text-align: center; padding: 8px 4px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.cal-cell { background: var(--white); padding: 8px; min-height: 70px; font-size: 12px; color: var(--muted); vertical-align: top; transition: background 0.15s; cursor: pointer; }
+.cal-cell:hover { background: var(--bg); }
+.cal-cell.today { background: #f0eefc; }
+.cal-cell.today .cal-date { color: var(--purple); font-weight: 600; }
+.cal-date { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+.cal-event { font-size: 10px; background: var(--blue-bg); color: var(--blue); border-radius: 3px; padding: 1px 5px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-event.green { background: var(--green-bg); color: var(--green); }
+.cal-event.red { background: var(--red-bg); color: var(--red); }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.cal-nav-title { font-weight: 500; font-size: 15px; }
+
+/* ANALYTICS PAGE */
+.chart-wrap { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 16px; }
+.chart-title { font-size: 13px; font-weight: 500; margin-bottom: 16px; }
+.bar-chart { display: flex; align-items: flex-end; gap: 10px; height: 120px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; height: 100%; }
+.bar-label { font-size: 10px; color: var(--muted); }
+.bar { width: 100%; border-radius: 4px 4px 0 0; background: var(--accent); transition: height 0.4s ease; }
+.bar.blue { background: var(--blue); }
+.bar.green { background: var(--green); }
+.bar.amber { background: var(--amber); }
+.bar.red { background: var(--red); }
+.bar-val { font-size: 11px; font-weight: 500; color: var(--muted); }
+.donut-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* NOTES PAGE */
+.notes-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.note-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; cursor: pointer; transition: border-color 0.15s; position: relative; }
+.note-card:hover { border-color: #bbb; }
+.note-card-title { font-weight: 500; font-size: 13px; margin-bottom: 6px; }
+.note-card-body { font-size: 12px; color: var(--muted); line-height: 1.7; }
+.note-card-date { font-size: 10px; color: var(--muted); margin-top: 10px; }
+.note-input-area { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 18px; margin-bottom: 16px; }
+.note-title-input { width: 100%; border: none; outline: none; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; color: var(--text); background: transparent; margin-bottom: 8px; }
+.note-body-input { width: 100%; border: none; outline: none; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--muted); background: transparent; resize: none; min-height: 60px; line-height: 1.7; }
+
+/* LINKS PAGE */
+.link-item { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 18px; margin-bottom: 10px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.15s; }
+.link-item:hover { border-color: #bbb; }
+.link-icon { width: 36px; height: 36px; border-radius: var(--radius); background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.link-info { flex: 1; min-width: 0; }
+.link-title { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+.link-url { font-size: 11px; color: var(--blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.link-add-row { display: flex; gap: 8px; margin-bottom: 16px; }
+.link-input { flex: 1; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text); background: var(--white); outline: none; }
+.link-input:focus { border-color: #aaa; }
+
+/* SETTINGS PAGE */
+.settings-section { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 16px; }
+.settings-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 0.5px solid var(--border); }
+.settings-row:last-child { border-bottom: none; }
+.settings-row-left { flex: 1; }
+.settings-row-label { font-size: 13px; font-weight: 500; }
+.settings-row-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.toggle { width: 36px; height: 20px; border-radius: 99px; background: var(--border); position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+.toggle.on { background: var(--accent); }
+.toggle-knob { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left 0.2s; }
+.toggle.on .toggle-knob { left: 19px; }
+.theme-btn { padding: 5px 14px; border-radius: var(--radius); border: 1.5px solid var(--border); background: var(--bg); font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; color: var(--text); transition: border-color 0.15s; }
+.theme-btn.selected { border-color: var(--accent); background: var(--white); font-weight: 500; }
+
+/* DASHBOARD PAGE */
+.dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.dash-welcome { background: var(--accent); color: #fff; border-radius: var(--radius-lg); padding: 22px 24px; margin-bottom: 20px; }
+.dash-welcome h2 { font-family: 'DM Serif Display', serif; font-size: 20px; margin-bottom: 6px; }
+.dash-welcome p { font-size: 13px; opacity: 0.7; }
+.recent-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.recent-item:last-child { border-bottom: none; }
+.recent-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.recent-dot.high { background: #d85a30; } .recent-dot.med { background: #ba7517; } .recent-dot.low { background: #3b6d11; }
+.recent-name { flex: 1; font-size: 13px; }
+.recent-badge { font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-header">
+    <div class="workspace-name">Kenzie Workspace</div>
+    <div class="workspace-sub">Multimedia Engineering · PENS</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Menu</div>
+    <div class="nav-item active" data-page="dashboard"><span class="nav-icon">🏠</span> Dashboard</div>
+    <div class="nav-item" data-page="tasks"><span class="nav-icon">✅</span> Tasks</div>
+    <div class="nav-item" data-page="projects"><span class="nav-icon">📁</span> Projects</div>
+    <div class="nav-item" data-page="calendar"><span class="nav-icon">📅</span> Calendar</div>
+    <div class="nav-item" data-page="analytics"><span class="nav-icon">📊</span> Analytics</div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Resources</div>
+    <div class="nav-item" data-page="notes"><span class="nav-icon">📚</span> Notes</div>
+    <div class="nav-item" data-page="links"><span class="nav-icon">🔗</span> Links</div>
+    <div class="nav-item" data-page="settings"><span class="nav-icon">⚙️</span> Settings</div>
+  </div>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="avatar">KW</div>
+      <div>
+        <div style="font-size:12px;color:var(--text);font-weight:500">Kenzie Wistara</div>
+        <div style="font-size:10px;color:var(--muted)">5324600041</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="topbarTitle">🏠 Dashboard</div>
+    <div class="topbar-right" id="topbarActions"></div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="dash-welcome">
+      <h2>Selamat datang, Kenzie 👋</h2>
+      <p>Ini ringkasan aktivitas workspace kamu hari ini.</p>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Tugas Aktif</div><div class="stat-value" id="dash-active">0</div><div class="stat-sub">tersisa</div></div>
+      <div class="stat-card"><div class="stat-label">Selesai</div><div class="stat-value" id="dash-done">0</div><div class="stat-sub">tugas</div></div>
+      <div class="stat-card"><div class="stat-label">Projects</div><div class="stat-value">3</div><div class="stat-sub">aktif</div></div>
+      <div class="stat-card"><div class="stat-label">Catatan</div><div class="stat-value" id="dash-notes">0</div><div class="stat-sub">tersimpan</div></div>
+    </div>
+    <div class="dash-grid">
+      <div class="card">
+        <div class="section-title">Tugas Terbaru</div>
+        <div id="dash-recent-tasks"></div>
+      </div>
+      <div class="card">
+        <div class="section-title">Aktivitas Minggu Ini</div>
+        <div style="padding-top:8px">
+          <div class="legend-item"><div class="legend-dot" style="background:#d85a30"></div>High priority — <strong id="dash-high">0</strong> tugas</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#ba7517"></div>Medium priority — <strong id="dash-med">0</strong> tugas</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#3b6d11"></div>Low priority — <strong id="dash-low">0</strong> tugas</div>
+          <div style="margin-top:14px;font-size:12px;color:var(--muted)">Progress keseluruhan</div>
+          <div class="progress-bar-wrap" style="margin-top:6px"><div class="progress-bar-fill" id="dash-progress-bar" style="width:0%"></div></div>
+          <div class="progress-label"><span>0%</span><span id="dash-pct">0%</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="page" id="page-tasks">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Aktif</div><div class="stat-value" id="countActive">0</div><div class="stat-sub">tugas tersisa</div></div>
+      <div class="stat-card"><div class="stat-label">Selesai</div><div class="stat-value" id="countDone">0</div><div class="stat-sub">tugas selesai</div></div>
+      <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="countTotal">0</div><div class="stat-sub">semua tugas</div></div>
+      <div class="stat-card"><div class="stat-label">Progress</div><div class="stat-value" id="countProgress">0%</div><div class="stat-sub">penyelesaian</div></div>
+    </div>
+    <div class="add-task-area">
+      <div class="add-task-label">Tambah Tugas Baru</div>
+      <div class="add-task-row">
+        <input class="task-input" id="taskInput" type="text" placeholder="Nama tugas baru...">
+        <select class="cat-select" id="catSelect">
+          <option value="work">💼 Work</option>
+          <option value="personal">🌿 Personal</option>
+          <option value="shopping">🛒 Shopping</option>
+          <option value="urgent">🔥 Urgent</option>
+        </select>
+        <select class="cat-select" id="prioSelect">
+          <option value="high">🔴 High</option>
+          <option value="med">🟡 Medium</option>
+          <option value="low">🟢 Low</option>
+        </select>
+        <button class="btn btn-primary" id="addBtn">+ Tambah</button>
+      </div>
+    </div>
+    <div class="filter-row">
+      <div class="filter-tab active" data-filter="all">Semua</div>
+      <div class="filter-tab" data-filter="active">Aktif</div>
+      <div class="filter-tab" data-filter="done">Selesai</div>
+      <div class="filter-tab" data-filter="work">Work</div>
+      <div class="filter-tab" data-filter="personal">Personal</div>
+      <div class="filter-tab" data-filter="urgent">Urgent</div>
+    </div>
+    <div class="tasks-section">
+      <div class="tasks-header">
+        <div>Tugas</div><div>Kategori</div><div>Prioritas</div><div>Aksi</div>
+      </div>
+      <div id="taskList"></div>
+    </div>
+  </div>
+
+  <!-- PROJECTS -->
+  <div class="page" id="page-projects">
+    <div class="section-title">Semua Proyek</div>
+    <div class="projects-grid">
+      <div class="project-card">
+        <div class="project-card-top">
+          <div class="project-name">🌐 Website Portfolio</div>
+          <span class="badge badge-green">Aktif</span>
+        </div>
+        <div class="project-desc">Membangun portfolio pribadi menggunakan HTML, CSS, dan jQuery dengan desain modern.</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:75%"></div></div>
+        <div class="progress-label"><span>Progress</span><span>75%</span></div>
+      </div>
+      <div class="project-card">
+        <div class="project-card-top">
+          <div class="project-name">📱 Keranjang Kenzie</div>
+          <span class="badge badge-green">Aktif</span>
+        </div>
+        <div class="project-desc">Aplikasi shopping list interaktif berbasis web menggunakan JavaScript dan localStorage.</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:90%"></div></div>
+        <div class="progress-label"><span>Progress</span><span>90%</span></div>
+      </div>
+      <div class="project-card">
+        <div class="project-card-top">
+          <div class="project-name">🎓 Laporan Warkshop</div>
+          <span class="badge badge-amber">In Progress</span>
+        </div>
+        <div class="project-desc">Dokumentasi percobaan jQuery: Syntax, Selectors, Events, Fade, dan Slide & Animate.</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:60%"></div></div>
+        <div class="progress-label"><span>Progress</span><span>60%</span></div>
+      </div>
+      <div class="project-card">
+        <div class="project-card-top">
+          <div class="project-name">🎨 UI Design System</div>
+          <span class="badge badge-purple">Planned</span>
+        </div>
+        <div class="project-desc">Merancang design system dan komponen UI yang konsisten untuk proyek-proyek mendatang.</div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:20%"></div></div>
+        <div class="progress-label"><span>Progress</span><span>20%</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">Ringkasan</div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <div><span class="badge badge-green" style="margin-right:6px">Aktif</span> 2 proyek</div>
+        <div><span class="badge badge-amber" style="margin-right:6px">In Progress</span> 1 proyek</div>
+        <div><span class="badge badge-purple" style="margin-right:6px">Planned</span> 1 proyek</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="page" id="page-calendar">
+    <div class="cal-nav">
+      <button class="btn" id="calPrev">← Prev</button>
+      <div class="cal-nav-title" id="calTitle"></div>
+      <button class="btn" id="calNext">Next →</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="card">
+      <div class="section-title">Event Bulan Ini</div>
+      <div id="calEventList"></div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="page" id="page-analytics">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Total Tugas</div><div class="stat-value" id="an-total">0</div><div class="stat-sub">keseluruhan</div></div>
+      <div class="stat-card"><div class="stat-label">Selesai</div><div class="stat-value" id="an-done">0</div><div class="stat-sub">tugas</div></div>
+      <div class="stat-card"><div class="stat-label">Tingkat Selesai</div><div class="stat-value" id="an-rate">0%</div><div class="stat-sub">completion rate</div></div>
+      <div class="stat-card"><div class="stat-label">Prioritas Tinggi</div><div class="stat-value" id="an-high">0</div><div class="stat-sub">tugas urgent</div></div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">Tugas per Kategori</div>
+      <div class="bar-chart" id="barChart"></div>
+    </div>
+    <div class="donut-row">
+      <div class="chart-wrap">
+        <div class="chart-title">Distribusi Prioritas</div>
+        <div id="prioLegend"></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Status Tugas</div>
+        <div id="statusLegend"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTES -->
+  <div class="page" id="page-notes">
+    <div class="note-input-area">
+      <input class="note-title-input" id="noteTitleInput" placeholder="Judul catatan...">
+      <textarea class="note-body-input" id="noteBodyInput" placeholder="Tulis catatan di sini..."></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-primary" id="addNoteBtn">+ Simpan Catatan</button>
+      </div>
+    </div>
+    <div class="notes-grid" id="notesGrid"></div>
+  </div>
+
+  <!-- LINKS -->
+  <div class="page" id="page-links">
+    <div class="link-add-row">
+      <input class="link-input" id="linkTitleInput" placeholder="Nama link...">
+      <input class="link-input" id="linkUrlInput" placeholder="https://...">
+      <button class="btn btn-primary" id="addLinkBtn">+ Tambah</button>
+    </div>
+    <div id="linksList"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="section-title">Profil</div>
+    <div class="settings-section">
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label">Nama</div>
+          <div class="settings-row-desc">Kenzie Wistara Dahayu</div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label">NIM</div>
+          <div class="settings-row-desc">5324600041</div>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label">Program Studi</div>
+          <div class="settings-row-desc">Teknologi Rekayasa Multimedia — PENS</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-title">Preferensi</div>
+    <div class="settings-section">
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label">Notifikasi tugas</div>
+          <div class="settings-row-desc">Tampilkan reminder saat tugas jatuh tempo</div>
+        </div>
+        <div class="toggle on" data-toggle="notif"><div class="toggle-knob"></div></div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label">Konfirmasi hapus</div>
+          <div class="settings-row-desc">Minta konfirmasi sebelum menghapus tugas</div>
+        </div>
+        <div class="toggle" data-toggle="confirm"><div class="toggle-knob"></div></div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label">Tampilkan tugas selesai</div>
+          <div class="settings-row-desc">Sembunyikan tugas yang sudah selesai dari daftar</div>
+        </div>
+        <div class="toggle on" data-toggle="showDone"><div class="toggle-knob"></div></div>
+      </div>
+    </div>
+
+    <div class="section-title">Tampilan</div>
+    <div class="settings-section">
+      <div class="settings-row">
+        <div class="settings-row-left">
+          <div class="settings-row-label">Tema</div>
+          <div class="settings-row-desc">Pilih tema tampilan workspace</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="theme-btn selected" data-theme="light">☀️ Light</button>
+          <button class="theme-btn" data-theme="dark">🌙 Dark</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+$(document).ready(function () {
+
+  /* ===================== DATA ===================== */
+  let tasks = [
+    { id: 1, name: 'Baca materi jQuery Syntax',  cat: 'work',     prio: 'high', done: false },
+    { id: 2, name: 'Kumpulkan laporan warkshop', cat: 'urgent',   prio: 'high', done: false },
+    { id: 3, name: 'Beli buku catatan baru',     cat: 'shopping', prio: 'med',  done: false },
+    { id: 4, name: 'Olahraga pagi',              cat: 'personal', prio: 'low',  done: true  },
+  ];
+  let nextId = 5;
+  let currentFilter = 'all';
+
+  let notes = [
+    { id: 1, title: 'Catatan jQuery', body: 'jQuery adalah library JavaScript yang menyederhanakan manipulasi DOM, event handling, animasi, dan AJAX.', date: 'Hari ini' },
+    { id: 2, title: 'Tips Belajar', body: 'Konsisten belajar 1-2 jam setiap hari lebih efektif daripada belajar sekaligus banyak di akhir pekan.', date: 'Kemarin' },
+  ];
+  let nextNoteId = 3;
+
+  let links = [
+    { id: 1, title: 'jQuery Documentation', url: 'https://api.jquery.com', icon: '📖' },
+    { id: 2, title: 'Keranjang Kenzie App', url: 'https://kenziewistara06-lgtm.github.io/keranjang-kenzie/tugas', icon: '🛒' },
+    { id: 3, title: 'PENS Website', url: 'https://www.pens.ac.id', icon: '🎓' },
+  ];
+  let nextLinkId = 4;
+
+  const catLabel = { work: '💼 Work', personal: '🌿 Personal', shopping: '🛒 Shopping', urgent: '🔥 Urgent' };
+  const catClass = { work: 'cat-work', personal: 'cat-personal', shopping: 'cat-shopping', urgent: 'cat-urgent' };
+  const prioClass = { high: 'p-high', med: 'p-med', low: 'p-low' };
+  const prioLabel = { high: 'High', med: 'Medium', low: 'Low' };
+
+  const pageConfig = {
+    dashboard: { title: '🏠 Dashboard',  actions: '' },
+    tasks:     { title: '✅ Tasks',       actions: '<button class="btn" id="clearDone">🗑 Hapus Selesai</button>' },
+    projects:  { title: '📁 Projects',   actions: '' },
+    calendar:  { title: '📅 Calendar',   actions: '' },
+    analytics: { title: '📊 Analytics',  actions: '' },
+    notes:     { title: '📚 Notes',      actions: '' },
+    links:     { title: '🔗 Links',      actions: '' },
+    settings:  { title: '⚙️ Settings',   actions: '' },
+  };
+
+  /* ===================== NAVIGATION ===================== */
+  function navigateTo(page) {
+    // jQuery Selector + Effect
+    $('.nav-item').removeClass('active');
+    $('[data-page="' + page + '"]').addClass('active');
+    $('.page').removeClass('active');
+    $('#page-' + page).addClass('active');
+    $('#topbarTitle').text(pageConfig[page].title);
+    $('#topbarActions').html(pageConfig[page].actions);
+
+    if (page === 'tasks')     renderTasks();
+    if (page === 'dashboard') renderDashboard();
+    if (page === 'analytics') renderAnalytics();
+    if (page === 'notes')     renderNotes();
+    if (page === 'links')     renderLinks();
+    if (page === 'calendar')  renderCalendar();
+
+    // Re-bind clearDone after injecting button
+    $(document).off('click', '#clearDone').on('click', '#clearDone', function () {
+      $('.task-item.done').fadeOut(200, function () {
+        tasks = tasks.filter(function (t) { return !t.done; });
+        renderTasks();
+      });
+    });
+  }
+
+  $('.nav-item').click(function () {
+    navigateTo($(this).data('page'));
+  });
+
+  /* ===================== TASKS ===================== */
+  function renderTasks() {
+    let filtered = tasks.filter(function (t) {
+      if (currentFilter === 'active')   return !t.done;
+      if (currentFilter === 'done')     return t.done;
+      if (currentFilter === 'work')     return t.cat === 'work';
+      if (currentFilter === 'personal') return t.cat === 'personal';
+      if (currentFilter === 'urgent')   return t.cat === 'urgent';
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      $('#taskList').html('<div class="empty-state"><div class="empty-icon">✨</div><div class="empty-text">Tidak ada tugas di sini.</div></div>');
+    } else {
+      let html = '';
+      $.each(filtered, function (i, t) {
+        html += '<div class="task-item ' + (t.done ? 'done' : '') + '" data-id="' + t.id + '">'
+          + '<div class="task-left">'
+          + '<div class="checkbox ' + (t.done ? 'checked' : '') + ' toggle-done" data-id="' + t.id + '"></div>'
+          + '<span class="task-name">' + $('<div>').text(t.name).html() + '</span>'
+          + '</div>'
+          + '<div><span class="cat-badge ' + catClass[t.cat] + '">' + catLabel[t.cat] + '</span></div>'
+          + '<div class="prio-cell"><div class="priority-dot ' + prioClass[t.prio] + '"></div><span class="prio-label">' + prioLabel[t.prio] + '</span></div>'
+          + '<div style="display:flex;justify-content:flex-end"><button class="delete-btn delete-task" data-id="' + t.id + '">✕</button></div>'
+          + '</div>';
+      });
+      $('#taskList').html(html);
+    }
+    updateTaskStats();
+  }
+
+  function updateTaskStats() {
+    let total = tasks.length, done = tasks.filter(function (t) { return t.done; }).length;
+    let active = total - done, pct = total > 0 ? Math.round(done / total * 100) : 0;
+    $('#countTotal').text(total); $('#countDone').text(done);
+    $('#countActive').text(active); $('#countProgress').text(pct + '%');
+  }
+
+  function addTask() {
+    let name = $('#taskInput').val().trim();
+    if (!name) { $('#taskInput').focus().css('border-color', '#d85a30'); setTimeout(function () { $('#taskInput').css('border-color', ''); }, 1000); return; }
+    tasks.unshift({ id: nextId++, name: name, cat: $('#catSelect').val(), prio: $('#prioSelect').val(), done: false });
+    $('#taskInput').val('').focus();
+    renderTasks();
+  }
+
+  $('#addBtn').click(addTask);
+  $('#taskInput').keypress(function (e) { if (e.which === 13) addTask(); });
+
+  $(document).on('click', '.toggle-done', function () {
+    let id = parseInt($(this).data('id'));
+    let t = tasks.find(function (x) { return x.id === id; });
+    if (t) t.done = !t.done;
+    $(this).closest('.task-item').fadeOut(180, function () { renderTasks(); });
+  });
+
+  $(document).on('click', '.delete-task', function () {
+    let id = parseInt($(this).data('id'));
+    $(this).closest('.task-item').fadeOut(200, function () {
+      tasks = tasks.filter(function (t) { return t.id !== id; });
+      renderTasks();
+    });
+  });
+
+  $('.filter-tab').click(function () {
+    $('.filter-tab').removeClass('active');
+    $(this).addClass('active');
+    currentFilter = $(this).data('filter');
+    renderTasks();
+  });
+
+  /* ===================== DASHBOARD ===================== */
+  function renderDashboard() {
+    let total = tasks.length, done = tasks.filter(function (t) { return t.done; }).length;
+    let active = total - done, pct = total > 0 ? Math.round(done / total * 100) : 0;
+    $('#dash-active').text(active); $('#dash-done').text(done);
+    $('#dash-notes').text(notes.length);
+    $('#dash-high').text(tasks.filter(function (t) { return t.prio === 'high'; }).length);
+    $('#dash-med').text(tasks.filter(function (t) { return t.prio === 'med'; }).length);
+    $('#dash-low').text(tasks.filter(function (t) { return t.prio === 'low'; }).length);
+    $('#dash-progress-bar').css('width', pct + '%');
+    $('#dash-pct').text(pct + '%');
+
+    let recentHtml = '';
+    tasks.slice(0, 4).forEach(function (t) {
+      recentHtml += '<div class="recent-item">'
+        + '<div class="recent-dot ' + t.prio + '"></div>'
+        + '<span class="recent-name">' + $('<div>').text(t.name).html() + '</span>'
+        + '<span class="recent-badge">' + catLabel[t.cat] + '</span>'
+        + '</div>';
+    });
+    if (!recentHtml) recentHtml = '<div style="font-size:12px;color:var(--muted);padding:10px 0">Belum ada tugas.</div>';
+    $('#dash-recent-tasks').html(recentHtml);
+  }
+
+  /* ===================== ANALYTICS ===================== */
+  function renderAnalytics() {
+    let total = tasks.length, done = tasks.filter(function (t) { return t.done; }).length;
+    let rate = total > 0 ? Math.round(done / total * 100) : 0;
+    let high = tasks.filter(function (t) { return t.prio === 'high'; }).length;
+    $('#an-total').text(total); $('#an-done').text(done);
+    $('#an-rate').text(rate + '%'); $('#an-high').text(high);
+
+    let cats = { work: 0, personal: 0, shopping: 0, urgent: 0 };
+    tasks.forEach(function (t) { cats[t.cat]++; });
+    let maxCat = Math.max(1, cats.work, cats.personal, cats.shopping, cats.urgent);
+    let catColors = { work: 'blue', personal: 'green', shopping: 'amber', urgent: 'red' };
+    let catNames = { work: '💼 Work', personal: '🌿 Personal', shopping: '🛒 Shop', urgent: '🔥 Urgent' };
+    let barHtml = '';
+    Object.keys(cats).forEach(function (k) {
+      let h = Math.round((cats[k] / maxCat) * 100);
+      barHtml += '<div class="bar-col">'
+        + '<div class="bar-val">' + cats[k] + '</div>'
+        + '<div class="bar ' + catColors[k] + '" style="height:' + h + '%"></div>'
+        + '<div class="bar-label">' + catNames[k] + '</div>'
+        + '</div>';
+    });
+    $('#barChart').html(barHtml);
+
+    let med = tasks.filter(function (t) { return t.prio === 'med'; }).length;
+    let low = tasks.filter(function (t) { return t.prio === 'low'; }).length;
+    $('#prioLegend').html(
+      '<div class="legend-item"><div class="legend-dot" style="background:#d85a30"></div>High — ' + high + ' tugas</div>' +
+      '<div class="legend-item"><div class="legend-dot" style="background:#ba7517"></div>Medium — ' + med + ' tugas</div>' +
+      '<div class="legend-item"><div class="legend-dot" style="background:#3b6d11"></div>Low — ' + low + ' tugas</div>'
+    );
+    let active = total - done;
+    $('#statusLegend').html(
+      '<div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Aktif — ' + active + ' tugas</div>' +
+      '<div class="legend-item"><div class="legend-dot" style="background:#ccc"></div>Selesai — ' + done + ' tugas</div>'
+    );
+  }
+
+  /* ===================== NOTES ===================== */
+  function renderNotes() {
+    if (notes.length === 0) {
+      $('#notesGrid').html('<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-text">Belum ada catatan.</div></div>');
+      return;
+    }
+    let html = '';
+    notes.forEach(function (n) {
+      html += '<div class="note-card" data-note-id="' + n.id + '">'
+        + '<div class="note-card-title">' + $('<div>').text(n.title).html() + '</div>'
+        + '<div class="note-card-body">' + $('<div>').text(n.body).html() + '</div>'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">'
+        + '<div class="note-card-date">' + n.date + '</div>'
+        + '<button class="btn btn-danger delete-note" data-note-id="' + n.id + '" style="padding:3px 10px;font-size:11px">Hapus</button>'
+        + '</div>'
+        + '</div>';
+    });
+    $('#notesGrid').html(html);
+  }
+
+  $('#addNoteBtn').click(function () {
+    let title = $('#noteTitleInput').val().trim();
+    let body  = $('#noteBodyInput').val().trim();
+    if (!title && !body) { $('#noteTitleInput').focus(); return; }
+    notes.unshift({ id: nextNoteId++, title: title || 'Tanpa Judul', body: body || '', date: 'Baru saja' });
+    $('#noteTitleInput').val(''); $('#noteBodyInput').val('');
+    renderNotes();
+  });
+
+  $(document).on('click', '.delete-note', function (e) {
+    e.stopPropagation();
+    let id = parseInt($(this).data('note-id'));
+    $(this).closest('.note-card').fadeOut(200, function () {
+      notes = notes.filter(function (n) { return n.id !== id; });
+      renderNotes();
+    });
+  });
+
+  /* ===================== LINKS ===================== */
+  function renderLinks() {
+    if (links.length === 0) {
+      $('#linksList').html('<div class="empty-state"><div class="empty-icon">🔗</div><div class="empty-text">Belum ada link tersimpan.</div></div>');
+      return;
+    }
+    let html = '';
+    links.forEach(function (l) {
+      html += '<div class="link-item" data-link-id="' + l.id + '">'
+        + '<div class="link-icon">' + l.icon + '</div>'
+        + '<div class="link-info">'
+        + '<div class="link-title">' + $('<div>').text(l.title).html() + '</div>'
+        + '<div class="link-url">' + $('<div>').text(l.url).html() + '</div>'
+        + '</div>'
+        + '<button class="btn" onclick="window.open(\'' + l.url + '\', \'_blank\')" style="font-size:11px">Buka ↗</button>'
+        + '<button class="btn btn-danger delete-link" data-link-id="' + l.id + '" style="font-size:11px;padding:5px 10px">✕</button>'
+        + '</div>';
+    });
+    $('#linksList').html(html);
+  }
+
+  $('#addLinkBtn').click(function () {
+    let title = $('#linkTitleInput').val().trim();
+    let url   = $('#linkUrlInput').val().trim();
+    if (!title || !url) { (!title ? $('#linkTitleInput') : $('#linkUrlInput')).focus().css('border-color','#d85a30'); setTimeout(function(){$('.link-input').css('border-color','');},1000); return; }
+    if (!url.startsWith('http')) url = 'https://' + url;
+    links.unshift({ id: nextLinkId++, title: title, url: url, icon: '🔗' });
+    $('#linkTitleInput').val(''); $('#linkUrlInput').val('');
+    renderLinks();
+  });
+
+  $(document).on('click', '.delete-link', function (e) {
+    e.stopPropagation();
+    let id = parseInt($(this).data('link-id'));
+    $(this).closest('.link-item').fadeOut(200, function () {
+      links = links.filter(function (l) { return l.id !== id; });
+      renderLinks();
+    });
+  });
+
+  /* ===================== CALENDAR ===================== */
+  let calDate = new Date();
+  const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const days   = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+
+  const calEvents = [
+    { day: 5,  label: 'Kumpul laporan', color: '' },
+    { day: 12, label: 'Presentasi jQuery', color: '' },
+    { day: 18, label: 'Deadline project', color: 'red' },
+    { day: 23, label: 'Ujian praktikum', color: 'green' },
+    { day: 28, label: 'Review tugas', color: '' },
+  ];
+
+  function renderCalendar() {
+    let year = calDate.getFullYear(), month = calDate.getMonth();
+    $('#calTitle').text(months[month] + ' ' + year);
+
+    let html = '';
+    days.forEach(function (d) { html += '<div class="cal-header-cell">' + d + '</div>'; });
+
+    let firstDay = new Date(year, month, 1).getDay();
+    let daysInMonth = new Date(year, month + 1, 0).getDate();
+    let today = new Date();
+    let isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+    for (let i = 0; i < firstDay; i++) html += '<div class="cal-cell" style="background:var(--bg)"></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      let isToday = isCurrentMonth && d === today.getDate();
+      let evs = calEvents.filter(function (e) { return e.day === d; });
+      let evHtml = evs.map(function (e) { return '<div class="cal-event ' + (e.color || '') + '">' + e.label + '</div>'; }).join('');
+      html += '<div class="cal-cell' + (isToday ? ' today' : '') + '"><div class="cal-date">' + d + '</div>' + evHtml + '</div>';
+    }
+    $('#calGrid').html(html);
+
+    let evListHtml = calEvents.map(function (e) {
+      return '<div class="recent-item"><div class="recent-dot" style="background:' + (e.color === 'red' ? '#d85a30' : e.color === 'green' ? '#3b6d11' : '#185fa5') + '"></div>'
+        + '<span class="recent-name">' + months[month].slice(0,3) + ' ' + e.day + ' — ' + e.label + '</span></div>';
+    }).join('');
+    $('#calEventList').html(evListHtml || '<div style="font-size:12px;color:var(--muted)">Tidak ada event.</div>');
+  }
+
+  $('#calPrev').click(function () { calDate.setMonth(calDate.getMonth() - 1); renderCalendar(); });
+  $('#calNext').click(function () { calDate.setMonth(calDate.getMonth() + 1); renderCalendar(); });
+
+  /* ===================== SETTINGS ===================== */
+  $(document).on('click', '.toggle', function () {
+    $(this).toggleClass('on');
+  });
+
+  $(document).on('click', '.theme-btn', function () {
+    $('.theme-btn').removeClass('selected');
+    $(this).addClass('selected');
+  });
+
+  /* ===================== INIT ===================== */
+  navigateTo('dashboard');
+
+});
+</script>
+</body>
+</html>
